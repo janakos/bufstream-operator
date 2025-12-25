@@ -1,0 +1,6 @@
+dependencies:
+- name: bufstream
+  repository: oci://us-docker.pkg.dev/buf-images-1/buf/charts
+  version: 0.4.9
+digest: sha256:50af6a4bf69e39e95c8b97f7df237b542e85e49207a39e76680f9d2eea715d2a
+generated: "2025-12-24T21:27:40.276982763-08:00"

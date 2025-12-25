@@ -1,0 +1,16 @@
+# Default values for bufstream-operator chart
+# This file contains values passed to the Bufstream subchart
+
+bufstream:
+  # Use in-memory storage for local development
+  storage:
+    use: memory
+  
+  metadata:
+    use: memory
+  
+  # Observability settings
+  observability:
+    metrics:
+      exporter: "PROMETHEUS"
+
