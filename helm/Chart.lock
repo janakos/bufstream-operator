@@ -2,5 +2,8 @@ dependencies:
 - name: bufstream
   repository: oci://us-docker.pkg.dev/buf-images-1/buf/charts
   version: 0.4.9
-digest: sha256:50af6a4bf69e39e95c8b97f7df237b542e85e49207a39e76680f9d2eea715d2a
-generated: "2025-12-24T21:27:40.276982763-08:00"
+- name: akhq
+  repository: https://akhq.io/
+  version: 0.25.1
+digest: sha256:a29a96d02b7f7618dc333fb65225e3cac0787a50cb9dc90c3bd994d6a5f15c7e
+generated: "2025-12-24T22:45:20.559679153-08:00"

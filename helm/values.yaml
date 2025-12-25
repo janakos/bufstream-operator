@@ -2,6 +2,11 @@
 # This file contains values passed to the Bufstream subchart
 
 bufstream:
+  # Single replica for local development
+  bufstream:
+    deployment:
+      replicaCount: 1
+  
   # Use in-memory storage for local development
   storage:
     use: memory
@@ -13,4 +18,30 @@ bufstream:
   observability:
     metrics:
       exporter: "PROMETHEUS"
+  
+  # Configure advertised listeners for local development
+  # This allows the controller to connect via localhost port-forward
+  kafka:
+    advertisedListeners:
+      - name: PLAINTEXT
+        port: 9092
+        # Use cluster DNS for in-cluster access
+        host: "bufstream.bufstream.svc.cluster.local"
+
+# AKHQ - Kafka UI for Bufstream
+akhq:
+  enabled: true
+  
+  service:
+    type: NodePort
+    nodePort: 30080
+  
+  configuration:
+    akhq:
+      connections:
+        bufstream:
+          properties:
+            client.id: "akhq;broker_count=1"
+            bootstrap.servers: "bufstream.bufstream.svc.cluster.local:9092"
+            metadata.recovery.strategy: REBOOTSTRAP
 

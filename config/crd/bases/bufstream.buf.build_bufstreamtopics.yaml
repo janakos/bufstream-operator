@@ -24,9 +24,6 @@ spec:
     - jsonPath: .status.replicationFactor
       name: Replication
       type: integer
-    - jsonPath: .status.managed
-      name: Managed
-      type: boolean
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
@@ -64,26 +61,11 @@ spec:
                   AssumeOwnership indicates whether to assume ownership of an existing topic.
                   If true, the operator will manage an existing topic even if it wasn't created by the operator.
                 type: boolean
-              clusterRef:
+              bootstrapServers:
                 description: |-
-                  ClusterRef references the Bufstream cluster to create the topic in.
-                  If not specified, uses the default cluster connection.
-                properties:
-                  bootstrapServers:
-                    description: |-
-                      BootstrapServers is the Kafka bootstrap servers address.
-                      If specified, overrides the cluster name-based discovery.
-                    type: string
-                  name:
-                    description: Name of the cluster connection (e.g., service name)
-                    type: string
-                  namespace:
-                    description: Namespace of the cluster. If not specified, uses
-                      the same namespace as the topic.
-                    type: string
-                required:
-                - name
-                type: object
+                  BootstrapServers is the Kafka bootstrap servers address for the Bufstream cluster.
+                  Example: "bufstream.bufstream.svc.cluster.local:9092"
+                type: string
               config:
                 additionalProperties:
                   type: string
@@ -106,6 +88,8 @@ spec:
                   TopicName is the name of the Kafka topic in Bufstream.
                   If not specified, defaults to the metadata.name of the resource.
                 type: string
+            required:
+            - bootstrapServers
             type: object
           status:
             description: status defines the observed state of BufstreamTopic
@@ -171,10 +155,6 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
-              managed:
-                description: Managed indicates whether the operator created this topic
-                  (true) or assumed ownership (false).
-                type: boolean
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this resource.

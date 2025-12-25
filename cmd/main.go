@@ -179,8 +179,9 @@ func main() {
 	}
 
 	if err := (&controller.BufstreamTopicReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		Recorder: mgr.GetEventRecorderFor("bufstreamtopic-controller"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BufstreamTopic")
 		os.Exit(1)
