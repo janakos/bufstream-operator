@@ -4,26 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: topics.bufstream.buf.build
+  name: clusters.bufstream.buf.build
 spec:
   group: bufstream.buf.build
   names:
-    kind: Topic
-    listKind: TopicList
-    plural: topics
-    singular: topic
+    kind: Cluster
+    listKind: ClusterList
+    plural: clusters
+    singular: cluster
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.topicName
-      name: Topic
+    - jsonPath: .spec.bootstrapServers
+      name: Bootstrap Servers
       type: string
-    - jsonPath: .status.partitions
-      name: Partitions
-      type: integer
-    - jsonPath: .status.replicationFactor
-      name: Replication
-      type: integer
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
       type: string
@@ -33,7 +27,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Topic is the Schema for the topics API
+        description: Cluster is the Schema for the clusters API
         properties:
           apiVersion:
             description: |-
@@ -53,54 +47,22 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Topic
+            description: spec defines the desired state of Cluster
             properties:
-              assumeOwnership:
-                default: false
-                description: |-
-                  AssumeOwnership indicates whether to assume ownership of an existing topic.
-                  If true, the operator will manage an existing topic even if it wasn't created by the operator.
-                type: boolean
               bootstrapServers:
                 description: |-
                   BootstrapServers is the Kafka bootstrap servers address for the Bufstream cluster.
                   Example: "bufstream.bufstream.svc.cluster.local:9092"
-                  Either cluster or bootstrapServers must be specified.
                 type: string
-              cluster:
-                description: |-
-                  Cluster references a BufstreamCluster resource in the same namespace.
-                  If specified, bootstrapServers will be resolved from the referenced cluster.
-                  Either cluster or bootstrapServers must be specified.
-                type: string
-              config:
-                additionalProperties:
-                  type: string
-                description: Config contains topic-level configuration overrides.
-                type: object
-              partitions:
-                default: 1
-                description: Partitions is the number of partitions for the topic.
-                format: int32
-                minimum: 1
-                type: integer
-              replicationFactor:
-                default: 1
-                description: ReplicationFactor is the replication factor for the topic.
-                format: int32
-                minimum: 1
-                type: integer
-              topicName:
-                description: |-
-                  TopicName is the name of the Kafka topic in Bufstream.
-                  If not specified, defaults to the metadata.name of the resource.
-                type: string
+            required:
+            - bootstrapServers
             type: object
           status:
-            description: status defines the observed state of Topic
+            description: status defines the observed state of Cluster
             properties:
               conditions:
-                description: Conditions represent the current state of the Topic resource.
+                description: Conditions represent the current state of the Cluster
+                  resource.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -164,17 +126,6 @@ spec:
                   for this resource.
                 format: int64
                 type: integer
-              partitions:
-                description: Partitions is the current number of partitions.
-                format: int32
-                type: integer
-              replicationFactor:
-                description: ReplicationFactor is the current replication factor.
-                format: int32
-                type: integer
-              topicName:
-                description: TopicName is the actual name of the topic in Bufstream.
-                type: string
             type: object
         required:
         - spec

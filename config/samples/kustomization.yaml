@@ -1,5 +1,5 @@
 ## Append samples of your project ##
 resources:
-- bufstream_v1alpha1_bufstreamcluster.yaml
+- bufstream_v1alpha1_cluster.yaml
 - bufstream_v1alpha1_topic.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

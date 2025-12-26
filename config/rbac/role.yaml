@@ -7,6 +7,14 @@ rules:
 - apiGroups:
   - bufstream.buf.build
   resources:
+  - clusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - bufstream.buf.build
+  resources:
   - topics
   verbs:
   - create

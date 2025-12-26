@@ -6,6 +6,6 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: topic-sample
 spec:
-  bootstrapServers: "bufstream.bufstream.svc.cluster.local:9092"
+  cluster: dev
   partitions: 3
   replicationFactor: 1

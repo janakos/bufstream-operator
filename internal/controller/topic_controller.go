@@ -25,6 +25,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -59,6 +60,7 @@ type TopicReconciler struct {
 // +kubebuilder:rbac:groups=bufstream.buf.build,resources=topics,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=bufstream.buf.build,resources=topics/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=bufstream.buf.build,resources=topics/finalizers,verbs=update
+// +kubebuilder:rbac:groups=bufstream.buf.build,resources=clusters,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -106,8 +108,16 @@ func (r *TopicReconciler) reconcileDelete(ctx context.Context, topic *bufstreamv
 
 	log.Info("Deleting topic from Bufstream")
 
+	// Resolve bootstrap servers
+	bootstrapServers, err := r.getBootstrapServers(ctx, topic)
+	if err != nil {
+		log.Error(err, "Failed to resolve bootstrap servers during deletion")
+		r.Recorder.Event(topic, "Warning", "DeletionFailed", fmt.Sprintf("Failed to resolve bootstrap servers: %v", err))
+		return ctrl.Result{RequeueAfter: requeueDegraded}, err
+	}
+
 	// Connect to Bufstream
-	bsClient, err := bufstream.NewClient(ctx, topic.Spec.BootstrapServers)
+	bsClient, err := bufstream.NewClient(ctx, bootstrapServers)
 	if err != nil {
 		log.Error(err, "Failed to connect to Bufstream during deletion, will retry")
 		r.Recorder.Event(topic, "Warning", "DeletionFailed", fmt.Sprintf("Failed to connect to Bufstream: %v", err))
@@ -156,8 +166,21 @@ func (r *TopicReconciler) reconcileTopic(ctx context.Context, topic *bufstreamv1
 	// Set progressing condition
 	r.setCondition(topic, typeProgressing, metav1.ConditionTrue, "Reconciling", "Reconciling topic")
 
+	// Resolve bootstrap servers
+	bootstrapServers, err := r.getBootstrapServers(ctx, topic)
+	if err != nil {
+		log.Error(err, "Failed to resolve bootstrap servers")
+		r.setCondition(topic, typeDegraded, metav1.ConditionTrue, "ConfigurationError", fmt.Sprintf("Failed to resolve bootstrap servers: %v", err))
+		r.setCondition(topic, typeReady, metav1.ConditionFalse, "ConfigurationError", "Cannot resolve bootstrap servers")
+		if statusErr := r.Status().Update(ctx, topic); statusErr != nil {
+			log.Error(statusErr, "Failed to update status")
+		}
+		r.Recorder.Event(topic, "Warning", "ConfigurationError", fmt.Sprintf("Failed to resolve bootstrap servers: %v", err))
+		return ctrl.Result{RequeueAfter: requeueDegraded}, err
+	}
+
 	// Connect to Bufstream
-	bsClient, err := bufstream.NewClient(ctx, topic.Spec.BootstrapServers)
+	bsClient, err := bufstream.NewClient(ctx, bootstrapServers)
 	if err != nil {
 		log.Error(err, "Failed to connect to Bufstream")
 		r.setCondition(topic, typeDegraded, metav1.ConditionTrue, "ConnectionFailed", fmt.Sprintf("Failed to connect: %v", err))
@@ -277,6 +300,30 @@ func (r *TopicReconciler) getTopicName(topic *bufstreamv1alpha1.Topic) string {
 		return topic.Spec.TopicName
 	}
 	return topic.Name
+}
+
+// getBootstrapServers resolves the bootstrap servers from the topic spec.
+// If bootstrapServers is specified directly, it is returned.
+// If clusterRef is specified, the bootstrap servers are resolved from the referenced BufstreamCluster.
+func (r *TopicReconciler) getBootstrapServers(ctx context.Context, topic *bufstreamv1alpha1.Topic) (string, error) {
+	// If bootstrapServers is specified directly, use it
+	if topic.Spec.BootstrapServers != "" {
+		return topic.Spec.BootstrapServers, nil
+	}
+
+	// If cluster is specified, resolve from the referenced cluster
+	if topic.Spec.Cluster != "" {
+		cluster := &bufstreamv1alpha1.Cluster{}
+		if err := r.Get(ctx, types.NamespacedName{
+			Name:      topic.Spec.Cluster,
+			Namespace: topic.Namespace,
+		}, cluster); err != nil {
+			return "", fmt.Errorf("failed to get Cluster %q: %w", topic.Spec.Cluster, err)
+		}
+		return cluster.Spec.BootstrapServers, nil
+	}
+
+	return "", fmt.Errorf("either cluster or bootstrapServers must be specified")
 }
 
 // setCondition sets a condition on the Topic status
