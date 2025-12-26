@@ -30,7 +30,7 @@ import (
 	bufstreamv1alpha1 "github.com/janakos/bufstream-operator/api/v1alpha1"
 )
 
-var _ = Describe("BufstreamTopic Controller", func() {
+var _ = Describe("Topic Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -40,13 +40,13 @@ var _ = Describe("BufstreamTopic Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		bufstreamtopic := &bufstreamv1alpha1.BufstreamTopic{}
+		topic := &bufstreamv1alpha1.Topic{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind BufstreamTopic")
-			err := k8sClient.Get(ctx, typeNamespacedName, bufstreamtopic)
+			By("creating the custom resource for the Kind Topic")
+			err := k8sClient.Get(ctx, typeNamespacedName, topic)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &bufstreamv1alpha1.BufstreamTopic{
+				resource := &bufstreamv1alpha1.Topic{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
@@ -59,16 +59,16 @@ var _ = Describe("BufstreamTopic Controller", func() {
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &bufstreamv1alpha1.BufstreamTopic{}
+			resource := &bufstreamv1alpha1.Topic{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance BufstreamTopic")
+			By("Cleanup the specific resource instance Topic")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &BufstreamTopicReconciler{
+			controllerReconciler := &TopicReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}

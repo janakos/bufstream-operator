@@ -7,7 +7,7 @@ rules:
 - apiGroups:
   - bufstream.buf.build
   resources:
-  - bufstreamtopics
+  - topics
   verbs:
   - create
   - delete
@@ -19,13 +19,13 @@ rules:
 - apiGroups:
   - bufstream.buf.build
   resources:
-  - bufstreamtopics/finalizers
+  - topics/finalizers
   verbs:
   - update
 - apiGroups:
   - bufstream.buf.build
   resources:
-  - bufstreamtopics/status
+  - topics/status
   verbs:
   - get
   - patch

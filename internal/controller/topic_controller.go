@@ -36,7 +36,7 @@ import (
 )
 
 const (
-	// topicFinalizer is added to BufstreamTopic resources to ensure cleanup
+	// topicFinalizer is added to Topic resources to ensure cleanup
 	topicFinalizer = "bufstream.buf.build/topic-finalizer"
 
 	// Condition types
@@ -49,30 +49,30 @@ const (
 	requeueDegraded = 30 * time.Second
 )
 
-// BufstreamTopicReconciler reconciles a BufstreamTopic object
-type BufstreamTopicReconciler struct {
+// TopicReconciler reconciles a Topic object
+type TopicReconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 }
 
-// +kubebuilder:rbac:groups=bufstream.buf.build,resources=bufstreamtopics,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=bufstream.buf.build,resources=bufstreamtopics/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=bufstream.buf.build,resources=bufstreamtopics/finalizers,verbs=update
+// +kubebuilder:rbac:groups=bufstream.buf.build,resources=topics,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=bufstream.buf.build,resources=topics/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=bufstream.buf.build,resources=topics/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *BufstreamTopicReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *TopicReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	// Fetch the BufstreamTopic resource
-	topic := &bufstreamv1alpha1.BufstreamTopic{}
+	// Fetch the Topic resource
+	topic := &bufstreamv1alpha1.Topic{}
 	if err := r.Get(ctx, req.NamespacedName, topic); err != nil {
 		if apierrors.IsNotFound(err) {
-			log.Info("BufstreamTopic resource not found, ignoring")
+			log.Info("Topic resource not found, ignoring")
 			return ctrl.Result{}, nil
 		}
-		log.Error(err, "Failed to get BufstreamTopic")
+		log.Error(err, "Failed to get Topic")
 		return ctrl.Result{}, err
 	}
 
@@ -96,8 +96,8 @@ func (r *BufstreamTopicReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	return r.reconcileTopic(ctx, topic)
 }
 
-// reconcileDelete handles deletion of the BufstreamTopic resource
-func (r *BufstreamTopicReconciler) reconcileDelete(ctx context.Context, topic *bufstreamv1alpha1.BufstreamTopic) (ctrl.Result, error) {
+// reconcileDelete handles deletion of the Topic resource
+func (r *TopicReconciler) reconcileDelete(ctx context.Context, topic *bufstreamv1alpha1.Topic) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	if !controllerutil.ContainsFinalizer(topic, topicFinalizer) {
@@ -140,7 +140,7 @@ func (r *BufstreamTopicReconciler) reconcileDelete(ctx context.Context, topic *b
 }
 
 // reconcileTopic handles creation and updates of the topic
-func (r *BufstreamTopicReconciler) reconcileTopic(ctx context.Context, topic *bufstreamv1alpha1.BufstreamTopic) (ctrl.Result, error) {
+func (r *TopicReconciler) reconcileTopic(ctx context.Context, topic *bufstreamv1alpha1.Topic) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	// Check if we've already reconciled this generation
@@ -272,15 +272,15 @@ func (r *BufstreamTopicReconciler) reconcileTopic(ctx context.Context, topic *bu
 }
 
 // getTopicName returns the topic name from spec or defaults to resource name
-func (r *BufstreamTopicReconciler) getTopicName(topic *bufstreamv1alpha1.BufstreamTopic) string {
+func (r *TopicReconciler) getTopicName(topic *bufstreamv1alpha1.Topic) string {
 	if topic.Spec.TopicName != "" {
 		return topic.Spec.TopicName
 	}
 	return topic.Name
 }
 
-// setCondition sets a condition on the BufstreamTopic status
-func (r *BufstreamTopicReconciler) setCondition(topic *bufstreamv1alpha1.BufstreamTopic, conditionType string, status metav1.ConditionStatus, reason, message string) {
+// setCondition sets a condition on the Topic status
+func (r *TopicReconciler) setCondition(topic *bufstreamv1alpha1.Topic, conditionType string, status metav1.ConditionStatus, reason, message string) {
 	condition := metav1.Condition{
 		Type:               conditionType,
 		Status:             status,
@@ -293,9 +293,9 @@ func (r *BufstreamTopicReconciler) setCondition(topic *bufstreamv1alpha1.Bufstre
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *BufstreamTopicReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *TopicReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&bufstreamv1alpha1.BufstreamTopic{}).
-		Named("bufstreamtopic").
+		For(&bufstreamv1alpha1.Topic{}).
+		Named("topic").
 		Complete(r)
 }

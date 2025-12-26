@@ -1,9 +1,11 @@
 apiVersion: bufstream.buf.build/v1alpha1
-kind: BufstreamTopic
+kind: Topic
 metadata:
   labels:
     app.kubernetes.io/name: bufstream-operator
     app.kubernetes.io/managed-by: kustomize
-  name: bufstreamtopic-sample
+  name: topic-sample
 spec:
-  # TODO(user): Add fields here
+  bootstrapServers: "bufstream.bufstream.svc.cluster.local:9092"
+  partitions: 3
+  replicationFactor: 1

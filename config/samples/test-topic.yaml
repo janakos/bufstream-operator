@@ -1,5 +1,5 @@
 apiVersion: bufstream.buf.build/v1alpha1
-kind: BufstreamTopic
+kind: Topic
 metadata:
   name: test-topic
   namespace: bufstream

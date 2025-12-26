@@ -23,8 +23,8 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// BufstreamTopicSpec defines the desired state of BufstreamTopic
-type BufstreamTopicSpec struct {
+// TopicSpec defines the desired state of Topic
+type TopicSpec struct {
 	// TopicName is the name of the Kafka topic in Bufstream.
 	// If not specified, defaults to the metadata.name of the resource.
 	// +optional
@@ -56,8 +56,8 @@ type BufstreamTopicSpec struct {
 	AssumeOwnership bool `json:"assumeOwnership,omitempty"`
 }
 
-// BufstreamTopicStatus defines the observed state of BufstreamTopic.
-type BufstreamTopicStatus struct {
+// TopicStatus defines the observed state of Topic.
+type TopicStatus struct {
 	// ObservedGeneration is the most recent generation observed for this resource.
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
@@ -74,7 +74,7 @@ type BufstreamTopicStatus struct {
 	// +optional
 	ReplicationFactor int32 `json:"replicationFactor,omitempty"`
 
-	// Conditions represent the current state of the BufstreamTopic resource.
+	// Conditions represent the current state of the Topic resource.
 	// +listType=map
 	// +listMapKey=type
 	// +optional
@@ -89,32 +89,32 @@ type BufstreamTopicStatus struct {
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 
-// BufstreamTopic is the Schema for the bufstreamtopics API
-type BufstreamTopic struct {
+// Topic is the Schema for the topics API
+type Topic struct {
 	metav1.TypeMeta `json:",inline"`
 
 	// metadata is a standard object metadata
 	// +optional
 	metav1.ObjectMeta `json:"metadata,omitzero"`
 
-	// spec defines the desired state of BufstreamTopic
+	// spec defines the desired state of Topic
 	// +required
-	Spec BufstreamTopicSpec `json:"spec"`
+	Spec TopicSpec `json:"spec"`
 
-	// status defines the observed state of BufstreamTopic
+	// status defines the observed state of Topic
 	// +optional
-	Status BufstreamTopicStatus `json:"status,omitzero"`
+	Status TopicStatus `json:"status,omitzero"`
 }
 
 // +kubebuilder:object:root=true
 
-// BufstreamTopicList contains a list of BufstreamTopic
-type BufstreamTopicList struct {
+// TopicList contains a list of Topic
+type TopicList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitzero"`
-	Items           []BufstreamTopic `json:"items"`
+	Items           []Topic `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&BufstreamTopic{}, &BufstreamTopicList{})
+	SchemeBuilder.Register(&Topic{}, &TopicList{})
 }

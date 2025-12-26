@@ -4,14 +4,14 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: bufstreamtopics.bufstream.buf.build
+  name: topics.bufstream.buf.build
 spec:
   group: bufstream.buf.build
   names:
-    kind: BufstreamTopic
-    listKind: BufstreamTopicList
-    plural: bufstreamtopics
-    singular: bufstreamtopic
+    kind: Topic
+    listKind: TopicList
+    plural: topics
+    singular: topic
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
@@ -33,7 +33,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: BufstreamTopic is the Schema for the bufstreamtopics API
+        description: Topic is the Schema for the topics API
         properties:
           apiVersion:
             description: |-
@@ -53,7 +53,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of BufstreamTopic
+            description: spec defines the desired state of Topic
             properties:
               assumeOwnership:
                 default: false
@@ -92,11 +92,10 @@ spec:
             - bootstrapServers
             type: object
           status:
-            description: status defines the observed state of BufstreamTopic
+            description: status defines the observed state of Topic
             properties:
               conditions:
-                description: Conditions represent the current state of the BufstreamTopic
-                  resource.
+                description: Conditions represent the current state of the Topic resource.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
