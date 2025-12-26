@@ -233,8 +233,12 @@ func (c *Client) DeleteTopic(ctx context.Context, topicName string) error {
 	}
 
 	for _, topicResp := range resp {
-		// Ignore "topic not found" errors
-		if topicResp.Err != nil && topicResp.Err.Error() != "UNKNOWN_TOPIC_OR_PARTITION" {
+		if topicResp.Err != nil {
+			// Ignore "topic not found" errors - topic may have already been deleted
+			errStr := topicResp.Err.Error()
+			if errStr == "UNKNOWN_TOPIC_OR_PARTITION" || errStr == "UNKNOWN_TOPIC" {
+				continue
+			}
 			return fmt.Errorf("failed to delete topic %s: %w", topicResp.Topic, topicResp.Err)
 		}
 	}
