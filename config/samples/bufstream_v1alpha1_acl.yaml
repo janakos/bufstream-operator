@@ -1,0 +1,17 @@
+apiVersion: bufstream.buf.build/v1alpha1
+kind: ACL
+metadata:
+  labels:
+    app.kubernetes.io/name: bufstream-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: app-producer-write-topics
+spec:
+  cluster: dev
+  principal: "User:app-producer"
+  resource:
+    type: Topic
+    name: "*"
+    patternType: Literal
+  operation: Write
+  permission: Allow
+  host: "*"

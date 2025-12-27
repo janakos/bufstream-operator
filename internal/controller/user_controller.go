@@ -120,7 +120,7 @@ func (r *UserReconciler) reconcileDelete(ctx context.Context, user *bufstreamv1a
 	}
 
 	// Connect to Bufstream with SASL authentication
-	bsClient, err := bufstream.NewClientWithSASL(ctx, cluster.Spec.BootstrapServers, saslConfig)
+	bsClient, err := bufstream.NewClient(ctx, cluster.Spec.BootstrapServers, saslConfig)
 	if err != nil {
 		log.Error(err, "Failed to connect to Bufstream during deletion, will retry")
 		r.Recorder.Event(user, "Warning", "DeletionFailed", fmt.Sprintf("Failed to connect to Bufstream: %v", err))
@@ -212,7 +212,7 @@ func (r *UserReconciler) reconcileUser(ctx context.Context, user *bufstreamv1alp
 	}
 
 	// Connect to Bufstream with SASL authentication
-	bsClient, err := bufstream.NewClientWithSASL(ctx, cluster.Spec.BootstrapServers, saslConfig)
+	bsClient, err := bufstream.NewClient(ctx, cluster.Spec.BootstrapServers, saslConfig)
 	if err != nil {
 		log.Error(err, "Failed to connect to Bufstream")
 		r.setCondition(user, typeDegraded, metav1.ConditionTrue, "ConnectionFailed", fmt.Sprintf("Failed to connect: %v", err))

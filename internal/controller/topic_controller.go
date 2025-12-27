@@ -128,7 +128,7 @@ func (r *TopicReconciler) reconcileDelete(ctx context.Context, topic *bufstreamv
 	}
 
 	// Connect to Bufstream
-	bsClient, err := bufstream.NewClientWithSASL(ctx, cluster.Spec.BootstrapServers, saslConfig)
+	bsClient, err := bufstream.NewClient(ctx, cluster.Spec.BootstrapServers, saslConfig)
 	if err != nil {
 		log.Error(err, "Failed to connect to Bufstream during deletion, will retry")
 		r.Recorder.Event(topic, "Warning", "DeletionFailed", fmt.Sprintf("Failed to connect to Bufstream: %v", err))
@@ -207,7 +207,7 @@ func (r *TopicReconciler) reconcileTopic(ctx context.Context, topic *bufstreamv1
 	}
 
 	// Connect to Bufstream
-	bsClient, err := bufstream.NewClientWithSASL(ctx, cluster.Spec.BootstrapServers, saslConfig)
+	bsClient, err := bufstream.NewClient(ctx, cluster.Spec.BootstrapServers, saslConfig)
 	if err != nil {
 		log.Error(err, "Failed to connect to Bufstream")
 		r.setCondition(topic, typeDegraded, metav1.ConditionTrue, "ConnectionFailed", fmt.Sprintf("Failed to connect: %v", err))

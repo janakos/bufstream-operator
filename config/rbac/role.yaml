@@ -15,6 +15,7 @@ rules:
 - apiGroups:
   - bufstream.buf.build
   resources:
+  - acls
   - clusters
   - topics
   - users
@@ -29,6 +30,7 @@ rules:
 - apiGroups:
   - bufstream.buf.build
   resources:
+  - acls/finalizers
   - clusters/finalizers
   - topics/finalizers
   - users/finalizers
@@ -37,6 +39,7 @@ rules:
 - apiGroups:
   - bufstream.buf.build
   resources:
+  - acls/status
   - clusters/status
   - topics/status
   - users/status

@@ -37,6 +37,12 @@ bufstream:
             plaintext:
               secret: bufstream-admin-credentials
 
+    # ACL authorization
+    authorization:
+      superUsers:
+        - admin
+      allowEveryoneIfNoAclFound: true
+
 # AKHQ - Kafka UI for Bufstream
 akhq:
   enabled: true

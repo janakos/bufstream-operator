@@ -3,4 +3,5 @@ resources:
 - bufstream_v1alpha1_cluster.yaml
 - bufstream_v1alpha1_topic.yaml
 - bufstream_v1alpha1_user.yaml
+- bufstream_v1alpha1_acl.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

@@ -84,7 +84,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Try to connect to Bufstream
-	bsClient, err := bufstream.NewClientWithSASL(ctx, cluster.Spec.BootstrapServers, saslConfig)
+	bsClient, err := bufstream.NewClient(ctx, cluster.Spec.BootstrapServers, saslConfig)
 	if err != nil {
 		log.Info("Cluster connectivity check failed", "error", err)
 		r.setCondition(cluster, typeReady, metav1.ConditionFalse, "ConnectionFailed", fmt.Sprintf("Failed to connect: %v", err))
