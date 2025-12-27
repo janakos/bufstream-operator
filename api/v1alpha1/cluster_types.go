@@ -26,6 +26,23 @@ type ClusterSpec struct {
 	// Example: "bufstream.bufstream.svc.cluster.local:9092"
 	// +required
 	BootstrapServers string `json:"bootstrapServers"`
+
+	// AdminCredentialsRef references a Secret containing admin credentials for SASL auth.
+	// The Secret must have 'username' and 'password' (or 'plaintext') keys.
+	// If not specified, the operator will connect without authentication.
+	// +optional
+	AdminCredentialsRef *AdminCredentialsReference `json:"adminCredentialsRef,omitempty"`
+}
+
+// AdminCredentialsReference references admin credentials for cluster authentication
+type AdminCredentialsReference struct {
+	// Name is the name of the Secret containing admin credentials.
+	// +required
+	Name string `json:"name"`
+
+	// Namespace is the namespace of the Secret. Defaults to the Cluster's namespace.
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // ClusterStatus defines the observed state of Cluster

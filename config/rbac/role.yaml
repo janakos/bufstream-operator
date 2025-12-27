@@ -5,6 +5,14 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - bufstream.buf.build
   resources:
   - clusters
@@ -16,6 +24,7 @@ rules:
   - bufstream.buf.build
   resources:
   - topics
+  - users
   verbs:
   - create
   - delete
@@ -28,12 +37,14 @@ rules:
   - bufstream.buf.build
   resources:
   - topics/finalizers
+  - users/finalizers
   verbs:
   - update
 - apiGroups:
   - bufstream.buf.build
   resources:
   - topics/status
+  - users/status
   verbs:
   - get
   - patch

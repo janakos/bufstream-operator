@@ -4,19 +4,25 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: clusters.bufstream.buf.build
+  name: users.bufstream.buf.build
 spec:
   group: bufstream.buf.build
   names:
-    kind: Cluster
-    listKind: ClusterList
-    plural: clusters
-    singular: cluster
+    kind: User
+    listKind: UserList
+    plural: users
+    singular: user
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.bootstrapServers
-      name: Bootstrap Servers
+    - jsonPath: .status.username
+      name: Username
+      type: string
+    - jsonPath: .status.mechanism
+      name: Mechanism
+      type: string
+    - jsonPath: .spec.cluster
+      name: Cluster
       type: string
     - jsonPath: .status.conditions[?(@.type=="Ready")].status
       name: Ready
@@ -27,7 +33,7 @@ spec:
     name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: Cluster is the Schema for the clusters API
+        description: User is the Schema for the users API
         properties:
           apiVersion:
             description: |-
@@ -47,38 +53,54 @@ spec:
           metadata:
             type: object
           spec:
-            description: spec defines the desired state of Cluster
+            description: spec defines the desired state of User
             properties:
-              adminCredentialsRef:
+              cluster:
+                description: Cluster references a Cluster resource in the same namespace.
+                type: string
+              iterations:
+                default: 4096
                 description: |-
-                  AdminCredentialsRef references a Secret containing admin credentials for SASL auth.
-                  The Secret must have 'username' and 'password' (or 'plaintext') keys.
-                  If not specified, the operator will connect without authentication.
+                  Iterations is the number of SCRAM iterations.
+                  Higher values are more secure but slower.
+                format: int32
+                minimum: 4096
+                type: integer
+              mechanism:
+                default: SCRAM-SHA-512
+                description: Mechanism is the SCRAM mechanism to use.
+                enum:
+                - SCRAM-SHA-256
+                - SCRAM-SHA-512
+                type: string
+              secretRef:
+                description: |-
+                  SecretRef references a Secret containing the password.
+                  The Secret must have a key named "password".
                 properties:
-                  name:
-                    description: Name is the name of the Secret containing admin credentials.
+                  key:
+                    default: password
+                    description: Key is the key in the Secret containing the password.
                     type: string
-                  namespace:
-                    description: Namespace is the namespace of the Secret. Defaults
-                      to the Cluster's namespace.
+                  name:
+                    description: Name is the name of the Secret.
                     type: string
                 required:
                 - name
                 type: object
-              bootstrapServers:
-                description: |-
-                  BootstrapServers is the Kafka bootstrap servers address for the Bufstream cluster.
-                  Example: "bufstream.bufstream.svc.cluster.local:9092"
+              username:
+                description: Username is the SASL username. If not specified, defaults
+                  to metadata.name.
                 type: string
             required:
-            - bootstrapServers
+            - cluster
+            - secretRef
             type: object
           status:
-            description: status defines the observed state of Cluster
+            description: status defines the observed state of User
             properties:
               conditions:
-                description: Conditions represent the current state of the Cluster
-                  resource.
+                description: Conditions represent the current state of the User resource.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -137,11 +159,20 @@ spec:
                 x-kubernetes-list-map-keys:
                 - type
                 x-kubernetes-list-type: map
+              mechanism:
+                description: Mechanism is the SCRAM mechanism configured.
+                enum:
+                - SCRAM-SHA-256
+                - SCRAM-SHA-512
+                type: string
               observedGeneration:
                 description: ObservedGeneration is the most recent generation observed
                   for this resource.
                 format: int64
                 type: integer
+              username:
+                description: Username is the actual username in Bufstream.
+                type: string
             type: object
         required:
         - spec

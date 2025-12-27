@@ -28,6 +28,15 @@ bufstream:
         # Use cluster DNS for in-cluster access
         host: "bufstream.bufstream.svc.cluster.local"
 
+    # SASL SCRAM authentication
+    authentication:
+      sasl:
+        scram:
+          adminCredentials:
+            hash: sha512
+            plaintext:
+              secret: bufstream-admin-credentials
+
 # AKHQ - Kafka UI for Bufstream
 akhq:
   enabled: true

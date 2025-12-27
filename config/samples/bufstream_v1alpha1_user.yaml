@@ -1,0 +1,21 @@
+apiVersion: bufstream.buf.build/v1alpha1
+kind: User
+metadata:
+  labels:
+    app.kubernetes.io/name: bufstream-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: app-producer
+spec:
+  cluster: dev
+  mechanism: SCRAM-SHA-512
+  secretRef:
+    name: app-producer-credentials
+    key: password
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-producer-credentials
+type: Opaque
+stringData:
+  password: "changeme"

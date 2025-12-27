@@ -4,6 +4,7 @@
 resources:
 - bases/bufstream.buf.build_clusters.yaml
 - bases/bufstream.buf.build_topics.yaml
+- bases/bufstream.buf.build_users.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches:

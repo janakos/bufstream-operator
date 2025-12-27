@@ -26,6 +26,7 @@ import (
 
 	"github.com/twmb/franz-go/pkg/kadm"
 	"github.com/twmb/franz-go/pkg/kgo"
+	"github.com/twmb/franz-go/pkg/sasl/scram"
 )
 
 // Client provides operations for managing Bufstream topics
@@ -50,8 +51,36 @@ type TopicInfo struct {
 	Config            map[string]string
 }
 
+// ScramMechanism represents a SCRAM authentication mechanism
+type ScramMechanism int8
+
+const (
+	ScramSHA256 ScramMechanism = 1
+	ScramSHA512 ScramMechanism = 2
+)
+
+// UserCredentials holds SCRAM credential configuration
+type UserCredentials struct {
+	Username   string
+	Password   string
+	Mechanism  ScramMechanism
+	Iterations int32
+}
+
+// SASLConfig holds SASL authentication configuration for the client
+type SASLConfig struct {
+	Username  string
+	Password  string
+	Mechanism ScramMechanism
+}
+
 // NewClient creates a new Bufstream client
 func NewClient(ctx context.Context, bootstrapServers string) (*Client, error) {
+	return NewClientWithSASL(ctx, bootstrapServers, nil)
+}
+
+// NewClientWithSASL creates a new Bufstream client with optional SASL authentication
+func NewClientWithSASL(ctx context.Context, bootstrapServers string, saslConfig *SASLConfig) (*Client, error) {
 	// Create context with timeout for connection
 	connCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -65,6 +94,22 @@ func NewClient(ctx context.Context, bootstrapServers string) (*Client, error) {
 	// Enable by setting BUFSTREAM_DEV_MODE=true
 	if os.Getenv("BUFSTREAM_DEV_MODE") == "true" {
 		opts = append(opts, kgo.Dialer(devModeDialer()))
+	}
+
+	// Configure SASL authentication if provided
+	if saslConfig != nil {
+		var auth scram.Auth
+		auth.User = saslConfig.Username
+		auth.Pass = saslConfig.Password
+
+		switch saslConfig.Mechanism {
+		case ScramSHA256:
+			opts = append(opts, kgo.SASL(auth.AsSha256Mechanism()))
+		case ScramSHA512:
+			opts = append(opts, kgo.SASL(auth.AsSha512Mechanism()))
+		default:
+			opts = append(opts, kgo.SASL(auth.AsSha512Mechanism()))
+		}
 	}
 
 	client, err := kgo.NewClient(opts...)
@@ -244,6 +289,98 @@ func (c *Client) DeleteTopic(ctx context.Context, topicName string) error {
 	}
 
 	return nil
+}
+
+// UpsertUserCredentials creates or updates SCRAM credentials for a user
+func (c *Client) UpsertUserCredentials(ctx context.Context, creds UserCredentials) error {
+	iterations := creds.Iterations
+	if iterations == 0 {
+		iterations = 4096
+	}
+
+	// Map our mechanism to kadm's mechanism
+	var mechanism kadm.ScramMechanism
+	switch creds.Mechanism {
+	case ScramSHA256:
+		mechanism = kadm.ScramSha256
+	case ScramSHA512:
+		mechanism = kadm.ScramSha512
+	default:
+		mechanism = kadm.ScramSha512
+	}
+
+	upsert := kadm.UpsertSCRAM{
+		User:       creds.Username,
+		Password:   creds.Password,
+		Mechanism:  mechanism,
+		Iterations: iterations,
+	}
+
+	resp, err := c.adminClient.AlterUserSCRAMs(ctx, nil, []kadm.UpsertSCRAM{upsert})
+	if err != nil {
+		return fmt.Errorf("failed to upsert user credentials: %w", err)
+	}
+
+	for _, r := range resp {
+		if r.Err != nil {
+			return fmt.Errorf("failed to upsert credentials for user %s: %w", r.User, r.Err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteUserCredentials deletes SCRAM credentials for a user
+func (c *Client) DeleteUserCredentials(ctx context.Context, username string, mechanism ScramMechanism) error {
+	// Map our mechanism to kadm's mechanism
+	var kadmMechanism kadm.ScramMechanism
+	switch mechanism {
+	case ScramSHA256:
+		kadmMechanism = kadm.ScramSha256
+	case ScramSHA512:
+		kadmMechanism = kadm.ScramSha512
+	default:
+		kadmMechanism = kadm.ScramSha512
+	}
+
+	deletion := kadm.DeleteSCRAM{
+		User:      username,
+		Mechanism: kadmMechanism,
+	}
+
+	resp, err := c.adminClient.AlterUserSCRAMs(ctx, []kadm.DeleteSCRAM{deletion}, nil)
+	if err != nil {
+		return fmt.Errorf("failed to delete user credentials: %w", err)
+	}
+
+	for _, r := range resp {
+		if r.Err != nil {
+			// Ignore "user not found" errors
+			errStr := r.Err.Error()
+			if errStr == "RESOURCE_NOT_FOUND" {
+				continue
+			}
+			return fmt.Errorf("failed to delete credentials for user %s: %w", r.User, r.Err)
+		}
+	}
+
+	return nil
+}
+
+// UserExists checks if a user with SCRAM credentials exists
+func (c *Client) UserExists(ctx context.Context, username string) (bool, error) {
+	resp, err := c.adminClient.DescribeUserSCRAMs(ctx, username)
+	if err != nil {
+		return false, fmt.Errorf("failed to describe user credentials: %w", err)
+	}
+
+	for _, r := range resp {
+		if r.User == username && len(r.CredInfos) > 0 {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 // devModeDialer returns a dialer that redirects cluster DNS to localhost.
