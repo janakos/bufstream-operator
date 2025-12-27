@@ -1,2 +1,5 @@
 .claude/
 charts/
+# Test artifacts
+bin/
+cover.out

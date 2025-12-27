@@ -44,17 +44,9 @@ type TopicSpec struct {
 	// +optional
 	Config map[string]string `json:"config,omitempty"`
 
-	// Cluster references a BufstreamCluster resource in the same namespace.
-	// If specified, bootstrapServers will be resolved from the referenced cluster.
-	// Either cluster or bootstrapServers must be specified.
-	// +optional
-	Cluster string `json:"cluster,omitempty"`
-
-	// BootstrapServers is the Kafka bootstrap servers address for the Bufstream cluster.
-	// Example: "bufstream.bufstream.svc.cluster.local:9092"
-	// Either cluster or bootstrapServers must be specified.
-	// +optional
-	BootstrapServers string `json:"bootstrapServers,omitempty"`
+	// Cluster references a Cluster resource in the same namespace.
+	// +required
+	Cluster string `json:"cluster"`
 
 	// AssumeOwnership indicates whether to assume ownership of an existing topic.
 	// If true, the operator will manage an existing topic even if it wasn't created by the operator.

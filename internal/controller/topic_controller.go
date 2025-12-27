@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -106,18 +105,30 @@ func (r *TopicReconciler) reconcileDelete(ctx context.Context, topic *bufstreamv
 		return ctrl.Result{}, nil
 	}
 
+	// Get cluster and check if ready before attempting deletion
+	cluster, err := GetCluster(ctx, r.Client, topic.Spec.Cluster, topic.Namespace)
+	if err != nil {
+		log.Error(err, "Failed to get cluster during deletion")
+		r.Recorder.Event(topic, "Warning", "DeletionFailed", fmt.Sprintf("Failed to get cluster: %v", err))
+		return ctrl.Result{RequeueAfter: requeueDegraded}, err
+	}
+	if !IsClusterReady(cluster) {
+		log.Info("Cluster not ready, waiting before deletion", "cluster", topic.Spec.Cluster)
+		return ctrl.Result{RequeueAfter: clusterNotReadyRequeue}, nil
+	}
+
 	log.Info("Deleting topic from Bufstream")
 
-	// Resolve bootstrap servers
-	bootstrapServers, err := r.getBootstrapServers(ctx, topic)
+	// Get admin credentials
+	saslConfig, err := GetAdminCredentials(ctx, r.Client, cluster)
 	if err != nil {
-		log.Error(err, "Failed to resolve bootstrap servers during deletion")
-		r.Recorder.Event(topic, "Warning", "DeletionFailed", fmt.Sprintf("Failed to resolve bootstrap servers: %v", err))
+		log.Error(err, "Failed to get admin credentials during deletion")
+		r.Recorder.Event(topic, "Warning", "DeletionFailed", fmt.Sprintf("Failed to get admin credentials: %v", err))
 		return ctrl.Result{RequeueAfter: requeueDegraded}, err
 	}
 
 	// Connect to Bufstream
-	bsClient, err := bufstream.NewClient(ctx, bootstrapServers)
+	bsClient, err := bufstream.NewClientWithSASL(ctx, cluster.Spec.BootstrapServers, saslConfig)
 	if err != nil {
 		log.Error(err, "Failed to connect to Bufstream during deletion, will retry")
 		r.Recorder.Event(topic, "Warning", "DeletionFailed", fmt.Sprintf("Failed to connect to Bufstream: %v", err))
@@ -163,24 +174,40 @@ func (r *TopicReconciler) reconcileTopic(ctx context.Context, topic *bufstreamv1
 		}
 	}
 
-	// Set progressing condition
-	r.setCondition(topic, typeProgressing, metav1.ConditionTrue, "Reconciling", "Reconciling topic")
-
-	// Resolve bootstrap servers
-	bootstrapServers, err := r.getBootstrapServers(ctx, topic)
+	// Get cluster and check if ready before attempting operations
+	cluster, err := GetCluster(ctx, r.Client, topic.Spec.Cluster, topic.Namespace)
 	if err != nil {
-		log.Error(err, "Failed to resolve bootstrap servers")
-		r.setCondition(topic, typeDegraded, metav1.ConditionTrue, "ConfigurationError", fmt.Sprintf("Failed to resolve bootstrap servers: %v", err))
-		r.setCondition(topic, typeReady, metav1.ConditionFalse, "ConfigurationError", "Cannot resolve bootstrap servers")
+		log.Error(err, "Failed to get cluster")
+		r.setCondition(topic, typeDegraded, metav1.ConditionTrue, "ClusterError", fmt.Sprintf("Failed to get cluster: %v", err))
+		r.setCondition(topic, typeReady, metav1.ConditionFalse, "ClusterError", "Cannot get cluster")
 		if statusErr := r.Status().Update(ctx, topic); statusErr != nil {
 			log.Error(statusErr, "Failed to update status")
 		}
-		r.Recorder.Event(topic, "Warning", "ConfigurationError", fmt.Sprintf("Failed to resolve bootstrap servers: %v", err))
+		return ctrl.Result{RequeueAfter: requeueDegraded}, err
+	}
+	if !IsClusterReady(cluster) {
+		log.Info("Cluster not ready, waiting", "cluster", topic.Spec.Cluster)
+		return ctrl.Result{RequeueAfter: clusterNotReadyRequeue}, nil
+	}
+
+	// Set progressing condition
+	r.setCondition(topic, typeProgressing, metav1.ConditionTrue, "Reconciling", "Reconciling topic")
+
+	// Get admin credentials
+	saslConfig, err := GetAdminCredentials(ctx, r.Client, cluster)
+	if err != nil {
+		log.Error(err, "Failed to get admin credentials")
+		r.setCondition(topic, typeDegraded, metav1.ConditionTrue, "CredentialsError", fmt.Sprintf("Failed to get credentials: %v", err))
+		r.setCondition(topic, typeReady, metav1.ConditionFalse, "CredentialsError", "Cannot get admin credentials")
+		if statusErr := r.Status().Update(ctx, topic); statusErr != nil {
+			log.Error(statusErr, "Failed to update status")
+		}
+		r.Recorder.Event(topic, "Warning", "CredentialsError", fmt.Sprintf("Failed to get admin credentials: %v", err))
 		return ctrl.Result{RequeueAfter: requeueDegraded}, err
 	}
 
 	// Connect to Bufstream
-	bsClient, err := bufstream.NewClient(ctx, bootstrapServers)
+	bsClient, err := bufstream.NewClientWithSASL(ctx, cluster.Spec.BootstrapServers, saslConfig)
 	if err != nil {
 		log.Error(err, "Failed to connect to Bufstream")
 		r.setCondition(topic, typeDegraded, metav1.ConditionTrue, "ConnectionFailed", fmt.Sprintf("Failed to connect: %v", err))
@@ -300,30 +327,6 @@ func (r *TopicReconciler) getTopicName(topic *bufstreamv1alpha1.Topic) string {
 		return topic.Spec.TopicName
 	}
 	return topic.Name
-}
-
-// getBootstrapServers resolves the bootstrap servers from the topic spec.
-// If bootstrapServers is specified directly, it is returned.
-// If clusterRef is specified, the bootstrap servers are resolved from the referenced BufstreamCluster.
-func (r *TopicReconciler) getBootstrapServers(ctx context.Context, topic *bufstreamv1alpha1.Topic) (string, error) {
-	// If bootstrapServers is specified directly, use it
-	if topic.Spec.BootstrapServers != "" {
-		return topic.Spec.BootstrapServers, nil
-	}
-
-	// If cluster is specified, resolve from the referenced cluster
-	if topic.Spec.Cluster != "" {
-		cluster := &bufstreamv1alpha1.Cluster{}
-		if err := r.Get(ctx, types.NamespacedName{
-			Name:      topic.Spec.Cluster,
-			Namespace: topic.Namespace,
-		}, cluster); err != nil {
-			return "", fmt.Errorf("failed to get Cluster %q: %w", topic.Spec.Cluster, err)
-		}
-		return cluster.Spec.BootstrapServers, nil
-	}
-
-	return "", fmt.Errorf("either cluster or bootstrapServers must be specified")
 }
 
 // setCondition sets a condition on the Topic status

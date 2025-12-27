@@ -97,18 +97,22 @@ func (r *UserReconciler) reconcileDelete(ctx context.Context, user *bufstreamv1a
 		return ctrl.Result{}, nil
 	}
 
-	log.Info("Deleting user from Bufstream")
-
-	// Get cluster for bootstrap servers and admin credentials
-	cluster, err := r.getCluster(ctx, user)
+	// Get cluster and check if ready before attempting deletion
+	cluster, err := GetCluster(ctx, r.Client, user.Spec.Cluster, user.Namespace)
 	if err != nil {
 		log.Error(err, "Failed to get cluster during deletion")
 		r.Recorder.Event(user, "Warning", "DeletionFailed", fmt.Sprintf("Failed to get cluster: %v", err))
 		return ctrl.Result{RequeueAfter: requeueDegraded}, err
 	}
+	if !IsClusterReady(cluster) {
+		log.Info("Cluster not ready, waiting before deletion", "cluster", user.Spec.Cluster)
+		return ctrl.Result{RequeueAfter: clusterNotReadyRequeue}, nil
+	}
+
+	log.Info("Deleting user from Bufstream")
 
 	// Get admin credentials for SASL authentication
-	saslConfig, err := r.getAdminCredentials(ctx, cluster)
+	saslConfig, err := GetAdminCredentials(ctx, r.Client, cluster)
 	if err != nil {
 		log.Error(err, "Failed to get admin credentials during deletion")
 		r.Recorder.Event(user, "Warning", "DeletionFailed", fmt.Sprintf("Failed to get admin credentials: %v", err))
@@ -162,24 +166,27 @@ func (r *UserReconciler) reconcileUser(ctx context.Context, user *bufstreamv1alp
 		}
 	}
 
-	// Set progressing condition
-	r.setCondition(user, typeProgressing, metav1.ConditionTrue, "Reconciling", "Reconciling user")
-
-	// Get cluster for bootstrap servers and admin credentials
-	cluster, err := r.getCluster(ctx, user)
+	// Get cluster and check if ready before attempting operations
+	cluster, err := GetCluster(ctx, r.Client, user.Spec.Cluster, user.Namespace)
 	if err != nil {
 		log.Error(err, "Failed to get cluster")
-		r.setCondition(user, typeDegraded, metav1.ConditionTrue, "ConfigurationError", fmt.Sprintf("Failed to get cluster: %v", err))
-		r.setCondition(user, typeReady, metav1.ConditionFalse, "ConfigurationError", "Cannot get cluster")
+		r.setCondition(user, typeDegraded, metav1.ConditionTrue, "ClusterError", fmt.Sprintf("Failed to get cluster: %v", err))
+		r.setCondition(user, typeReady, metav1.ConditionFalse, "ClusterError", "Cannot get cluster")
 		if statusErr := r.Status().Update(ctx, user); statusErr != nil {
 			log.Error(statusErr, "Failed to update status")
 		}
-		r.Recorder.Event(user, "Warning", "ConfigurationError", fmt.Sprintf("Failed to get cluster: %v", err))
 		return ctrl.Result{RequeueAfter: requeueDegraded}, err
 	}
+	if !IsClusterReady(cluster) {
+		log.Info("Cluster not ready, waiting", "cluster", user.Spec.Cluster)
+		return ctrl.Result{RequeueAfter: clusterNotReadyRequeue}, nil
+	}
+
+	// Set progressing condition
+	r.setCondition(user, typeProgressing, metav1.ConditionTrue, "Reconciling", "Reconciling user")
 
 	// Get admin credentials for SASL authentication
-	saslConfig, err := r.getAdminCredentials(ctx, cluster)
+	saslConfig, err := GetAdminCredentials(ctx, r.Client, cluster)
 	if err != nil {
 		log.Error(err, "Failed to get admin credentials")
 		r.setCondition(user, typeDegraded, metav1.ConditionTrue, "ConfigurationError", fmt.Sprintf("Failed to get admin credentials: %v", err))
@@ -268,67 +275,6 @@ func (r *UserReconciler) reconcileUser(ctx context.Context, user *bufstreamv1alp
 
 	log.Info("User reconciled successfully")
 	return ctrl.Result{RequeueAfter: requeueHealthy}, nil
-}
-
-// getCluster retrieves the referenced Cluster resource
-func (r *UserReconciler) getCluster(ctx context.Context, user *bufstreamv1alpha1.User) (*bufstreamv1alpha1.Cluster, error) {
-	cluster := &bufstreamv1alpha1.Cluster{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      user.Spec.Cluster,
-		Namespace: user.Namespace,
-	}, cluster); err != nil {
-		return nil, fmt.Errorf("failed to get Cluster %q: %w", user.Spec.Cluster, err)
-	}
-	return cluster, nil
-}
-
-// getBootstrapServers resolves bootstrap servers from the cluster reference
-func (r *UserReconciler) getBootstrapServers(ctx context.Context, user *bufstreamv1alpha1.User) (string, error) {
-	cluster, err := r.getCluster(ctx, user)
-	if err != nil {
-		return "", err
-	}
-	return cluster.Spec.BootstrapServers, nil
-}
-
-// getAdminCredentials retrieves admin credentials for the cluster
-func (r *UserReconciler) getAdminCredentials(ctx context.Context, cluster *bufstreamv1alpha1.Cluster) (*bufstream.SASLConfig, error) {
-	if cluster.Spec.AdminCredentialsRef == nil {
-		return nil, nil // No auth configured
-	}
-
-	secretNS := cluster.Spec.AdminCredentialsRef.Namespace
-	if secretNS == "" {
-		secretNS = cluster.Namespace
-	}
-
-	secret := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      cluster.Spec.AdminCredentialsRef.Name,
-		Namespace: secretNS,
-	}, secret); err != nil {
-		return nil, fmt.Errorf("failed to get admin credentials secret %q: %w", cluster.Spec.AdminCredentialsRef.Name, err)
-	}
-
-	username, ok := secret.Data["username"]
-	if !ok {
-		return nil, fmt.Errorf("admin credentials secret %q does not contain 'username' key", cluster.Spec.AdminCredentialsRef.Name)
-	}
-
-	// Try 'password' first, then 'plaintext' (for compatibility with bufstream secrets)
-	password, ok := secret.Data["password"]
-	if !ok {
-		password, ok = secret.Data["plaintext"]
-		if !ok {
-			return nil, fmt.Errorf("admin credentials secret %q does not contain 'password' or 'plaintext' key", cluster.Spec.AdminCredentialsRef.Name)
-		}
-	}
-
-	return &bufstream.SASLConfig{
-		Username:  string(username),
-		Password:  string(password),
-		Mechanism: bufstream.ScramSHA512, // Default to SHA512
-	}, nil
 }
 
 // getPassword retrieves the password from the referenced secret

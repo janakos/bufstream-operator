@@ -16,13 +16,6 @@ rules:
   - bufstream.buf.build
   resources:
   - clusters
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - bufstream.buf.build
-  resources:
   - topics
   - users
   verbs:
@@ -36,6 +29,7 @@ rules:
 - apiGroups:
   - bufstream.buf.build
   resources:
+  - clusters/finalizers
   - topics/finalizers
   - users/finalizers
   verbs:
@@ -43,6 +37,7 @@ rules:
 - apiGroups:
   - bufstream.buf.build
   resources:
+  - clusters/status
   - topics/status
   - users/status
   verbs:
