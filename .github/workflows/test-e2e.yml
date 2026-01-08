@@ -2,12 +2,13 @@ name: E2E Tests
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 jobs:
   test-e2e:
-    name: Run on Ubuntu
-    runs-on: ubuntu-latest
+    name: E2E Tests
+    runs-on: self-hosted-linux-x64-amazon
     steps:
       - name: Clone the code
         uses: actions/checkout@v4

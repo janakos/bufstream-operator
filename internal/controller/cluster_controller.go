@@ -75,7 +75,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	saslConfig, err := GetAdminCredentials(ctx, r.Client, cluster)
 	if err != nil {
 		log.Error(err, "Failed to get admin credentials")
-		r.setCondition(cluster, typeReady, metav1.ConditionFalse, "CredentialsError", fmt.Sprintf("Failed to get admin credentials: %v", err))
+		r.setCondition(cluster, metav1.ConditionFalse, "CredentialsError", fmt.Sprintf("Failed to get admin credentials: %v", err))
 		if statusErr := r.Status().Update(ctx, cluster); statusErr != nil {
 			log.Error(statusErr, "Failed to update status")
 		}
@@ -87,7 +87,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	bsClient, err := bufstream.NewClient(ctx, cluster.Spec.BootstrapServers, saslConfig)
 	if err != nil {
 		log.Info("Cluster connectivity check failed", "error", err)
-		r.setCondition(cluster, typeReady, metav1.ConditionFalse, "ConnectionFailed", fmt.Sprintf("Failed to connect: %v", err))
+		r.setCondition(cluster, metav1.ConditionFalse, "ConnectionFailed", fmt.Sprintf("Failed to connect: %v", err))
 		if statusErr := r.Status().Update(ctx, cluster); statusErr != nil {
 			log.Error(statusErr, "Failed to update status")
 		}
@@ -99,7 +99,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// Check health
 	if err := bsClient.CheckHealth(ctx); err != nil {
 		log.Info("Cluster health check failed", "error", err)
-		r.setCondition(cluster, typeReady, metav1.ConditionFalse, "Unhealthy", fmt.Sprintf("Health check failed: %v", err))
+		r.setCondition(cluster, metav1.ConditionFalse, "Unhealthy", fmt.Sprintf("Health check failed: %v", err))
 		if statusErr := r.Status().Update(ctx, cluster); statusErr != nil {
 			log.Error(statusErr, "Failed to update status")
 		}
@@ -109,7 +109,7 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	// Cluster is healthy
 	cluster.Status.ObservedGeneration = cluster.Generation
-	r.setCondition(cluster, typeReady, metav1.ConditionTrue, "Connected", "Cluster is reachable and healthy")
+	r.setCondition(cluster, metav1.ConditionTrue, "Connected", "Cluster is reachable and healthy")
 
 	if err := r.Status().Update(ctx, cluster); err != nil {
 		log.Error(err, "Failed to update status")
@@ -121,9 +121,9 @@ func (r *ClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 // setCondition sets a condition on the Cluster status
-func (r *ClusterReconciler) setCondition(cluster *bufstreamv1alpha1.Cluster, conditionType string, status metav1.ConditionStatus, reason, message string) {
+func (r *ClusterReconciler) setCondition(cluster *bufstreamv1alpha1.Cluster, status metav1.ConditionStatus, reason, message string) {
 	condition := metav1.Condition{
-		Type:               conditionType,
+		Type:               typeReady,
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
