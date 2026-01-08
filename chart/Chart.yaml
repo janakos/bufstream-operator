@@ -1,0 +1,13 @@
+apiVersion: v2
+name: bufstream-operator
+description: A Helm chart for deploying the Bufstream Kubernetes Operator
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - bufstream
+  - kafka
+  - operator
+  - kubernetes
+maintainers:
+  - name: janakos
