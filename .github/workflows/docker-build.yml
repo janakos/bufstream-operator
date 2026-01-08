@@ -1,0 +1,30 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    name: Build and Push
+    runs-on: self-hosted-linux-x64-amazon
+    steps:
+      - name: Checkout and configure docker cache and tags
+        uses: Hadrian-MTV/GithubActionsCommon/actions/docker-config@v1.0.8-dc
+        id: docker-config
+        with:
+          secrets: ${{ toJSON(secrets) }}
+          ecr_repo: 'bufstream-operator'
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.docker-config.outputs.tags }}
+          labels: ${{ steps.docker-config.outputs.labels }}
+          cache-from: ${{ steps.docker-config.outputs.ecr-cache-from }}
+          cache-to: ${{ steps.docker-config.outputs.ecr-cache-to }}
+          platforms: linux/amd64,linux/arm64
