@@ -8,7 +8,7 @@ on:
 jobs:
   test:
     name: Tests
-    runs-on: self-hosted-linux-x64-amazon
+    runs-on: ubuntu-latest
     steps:
       - name: Clone the code
         uses: actions/checkout@v4
